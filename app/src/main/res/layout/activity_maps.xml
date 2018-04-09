@@ -41,5 +41,5 @@
         android:layout_margin="20dp"
         android:background="@color/colorAccent"
         android:padding="10dp"
-        android:text="Optimize" />
+        android:text="Tìm đường" />
 </RelativeLayout>
