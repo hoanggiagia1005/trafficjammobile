@@ -1,4 +1,4 @@
-package trafficjam.k60n.com.trafficjam.activity;
+﻿package trafficjam.k60n.com.trafficjam.activity;
 
 import android.Manifest;
 import android.content.Context;
@@ -17,6 +17,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
+
 
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
