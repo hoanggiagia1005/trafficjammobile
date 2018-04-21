@@ -16,30 +16,43 @@
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_marginBottom="6dp"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="60dp"
-        android:layout_marginTop="20dp"
-        android:background="#ffffff"
-        android:hint=" Place Start..." />
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"
+        android:layout_marginTop="50dp"
+        android:background="@drawable/border"
+        android:hint="Điểm xuất phát ..."
+        android:paddingLeft="20dp" />
 
     <EditText
         android:id="@+id/edt_end"
         android:layout_width="match_parent"
         android:layout_height="50dp"
-        android:layout_below="@id/edt_start"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="60dp"
-        android:background="#ffffff"
-        android:hint=" Place End ..." />
+        android:layout_below="@+id/edt_start"
+        android:layout_marginBottom="6dp"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"
+        android:background="@drawable/border"
+        android:hint="Nhập điểm đến ..."
+        android:paddingLeft="20dp" />
 
-    <Button
-        android:id="@+id/btn_optimize"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_centerInParent="true"
+        android:layout_width="166dp"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:layout_margin="20dp"
-        android:background="@color/colorAccent"
-        android:padding="10dp"
-        android:text="Tìm đường" />
+        android:orientation="vertical">
+        <TextView
+            android:padding="10px"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:text="Di chuyển để chọn vị trí"
+            android:background="@drawable/border_select"
+            android:textColor="#ffffff"/>
+        <ImageView
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:src="@drawable/location" />
+    </LinearLayout>
+
 </RelativeLayout>
