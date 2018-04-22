@@ -24,6 +24,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.akexorcist.googledirection.DirectionCallback;
+import com.akexorcist.googledirection.GoogleDirection;
+import com.akexorcist.googledirection.model.Direction;
+import com.akexorcist.googledirection.model.Route;
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
 import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.Status;
@@ -35,11 +39,15 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.JsonObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -57,6 +65,7 @@ import trafficjam.k60n.com.trafficjam.network.NetworkModule;
 import trafficjam.k60n.com.trafficjam.util.Utils;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
+    String TAG = "MapsActivity";
 
     private GoogleMap mMap;
     View mMapView;
@@ -89,6 +98,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     LatLng startLocation, endLocation;
     Marker startMarker, endMarker;
+    ArrayList<Polyline> listPolyLine;
     private LocationManager locationManager;
 
 
@@ -149,7 +159,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
                 LatLng placeLocation = place.getLatLng();
-                startLocation = placeLocation;
                 this.startLocation = placeLocation;
 
                 CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(placeLocation, 14.0f);
@@ -173,7 +182,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 destLocTxt.setText(place.getName());
                 destLocSelectTxt.setText(place.getName());
                 LatLng placeLocation = place.getLatLng();
-                endLocation = placeLocation;
                 this.endLocation = placeLocation;
 
                 CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(placeLocation, 14.0f);
@@ -181,6 +189,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (mMap != null) {
                     //gMap.clear();
                     endMarker = mMap.addMarker(new MarkerOptions().position(placeLocation).title("" + place.getAddress()));
+                }
+
+                if (!pickUpLocTxt.getText().toString().isEmpty()){
+                    getDirections();
                 }
 
             } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
@@ -205,6 +217,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
+        listPolyLine = new ArrayList<>();
     }
 
     @Override
@@ -232,42 +245,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
-        // lay vi tri chinh giua man hinh
-
-//        mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
-//            @Override
-//            public void onCameraMove() {
-//                String addressStr = "";
-//                Geocoder geoCoder;
-//                List<Address> addresses;
-//                geoCoder = new Geocoder(MapsActivity.this, Locale.getDefault());
-//                LatLng center = mMap.getCameraPosition().target;
-//                Log.d("Tag", center + "");
-//                try {
-//                    addresses = geoCoder.getFromLocation(center.latitude, center.longitude, 1);
-//                    Log.d("Tag", addresses + "");
-//                    if (addresses.size() != 0) {
-//                        if (addresses.get(0).getFeatureName().equals("Unnamed Road")) {
-//                            addressStr = addresses.get(0).getLocality() + ", " + addresses.get(0).getSubAdminArea() + "";
-//                        } else {
-//                            addressStr = addresses.get(0).getFeatureName() + " " + addresses.get(0).getThoroughfare() + "";
-//                        }
-//                    }
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//
-////                if (edtStart.isFocused()) {
-////                    edtStart.setText(addressStr + "");
-////                    startLocation = new LatLng(center.latitude, center.longitude);
-////                } else {
-////                    edtEnd.setText(addressStr + "");
-////                    endLocation = new LatLng(center.latitude, center.longitude);
-////                }
-//
-//            }
-//        });
 
 
         //check
@@ -314,9 +291,56 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     @Override
                     public void onNext(JsonObject jsonObject) {
-
+                        Log.i(TAG, "onNext: "+jsonObject);
                     }
                 });
+        String serverKey = "AIzaSyDt2fvDhvVmvluksCk1qNLS0oP2czcrtfk";
+        GoogleDirection.withServerKey(serverKey)
+                .from(startLocation)
+                .to(endLocation)
+                .alternativeRoute(true)
+                .execute(new DirectionCallback() {
+                    @Override
+                    public void onDirectionSuccess(Direction direction, String rawBody) {
+                        Log.i(TAG, "onDirectionSuccess: "+direction.toString());
+                        // Do something here
+                        DrawRoute(direction,rawBody,startLocation,endLocation);
+                    }
+
+                    @Override
+                    public void onDirectionFailure(Throwable t) {
+                        // Do something here
+                        Log.i(TAG, "onDirectionFailure: "+t.toString());
+                    }
+                });
+    }
+
+    private void DrawRoute(Direction direction, String message,LatLng sourceLatlng,LatLng DestinationLng) {
+        Polyline poly;
+        for (Route route : direction.getRouteList()) {
+            PolylineOptions polyoptions = new PolylineOptions();
+            polyoptions.color(getResources().getColor(R.color.appThemeColor_1));
+            polyoptions.width(5);
+            polyoptions.addAll(route.getOverviewPolyline().getPointList());
+            poly = mMap.addPolyline(polyoptions);
+            poly.setClickable(true);
+
+        }
+        LatLngBounds.Builder latLngBuilder = new LatLngBounds.Builder();
+        if(sourceLatlng!=null)
+            latLngBuilder.include(sourceLatlng);
+        if(DestinationLng!=null)
+            latLngBuilder.include(DestinationLng);
+
+        try {
+            LatLngBounds bounds = latLngBuilder.build();
+            CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds,
+                    Utils.dpToPx(this, 135));
+            mMap.animateCamera(cu);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     @Override
