@@ -13,11 +13,14 @@ import android.location.LocationManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v7.widget.CardView;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -57,39 +60,45 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
     View mMapView;
-    @BindView(R.id.edt_start)
-    EditText edtStart;
-    @BindView(R.id.edt_end)
-    EditText edtEnd;
+//    @BindView(R.id.edt_start)
+//    EditText edtStart;
+//    @BindView(R.id.edt_end)
+//    EditText edtEnd;
+
+    @BindView(R.id.destarea)
+    LinearLayout destarea;
+    @BindView(R.id.sourceLocSelectTxt)
+    TextView sourceLocSelectTxt;
+    @BindView(R.id.sourceLocCardArea)
+    CardView sourceLocCardArea;
+    @BindView(R.id.pickUpLocHTxt)
+    TextView pickUpLocHTxt;
+    @BindView(R.id.pickUpLocTxt)
+    TextView pickUpLocTxt;
+    @BindView(R.id.destLocSelectTxt)
+    TextView destLocSelectTxt;
+    @BindView(R.id.destLocHTxt)
+    TextView destLocHTxt;
+    @BindView(R.id.destLocTxt)
+    TextView destLocTxt;
+    @BindView(R.id.area_source)
+            RelativeLayout area_source;
+    @BindView(R.id.area2)
+            RelativeLayout area2;
 
 
     LatLng startLocation, endLocation;
     Marker startMarker, endMarker;
     private LocationManager locationManager;
 
-    @OnTouch({R.id.edt_start, R.id.edt_end})
-    boolean focus(View v) {
-        switch (v.getId()) {
-            case R.id.edt_start:
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(startLocation));
-                break;
-            case R.id.edt_end:
-                if(endLocation!=null) {
-                    mMap.moveCamera(CameraUpdateFactory.newLatLng(endLocation));
-                }
-                break;
-            default:
-                break;
-        }
-        return false;
-    }
 
-    @OnClick({R.id.edt_start, R.id.edt_end})
+
+    @OnClick({R.id.destarea, R.id.sourceLocSelectTxt,R.id.sourceLocCardArea,R.id.destLocSelectTxt})
     void click(View view) {
         switch (view.getId()) {
-            case R.id.edt_start: {
+            case R.id.sourceLocCardArea: {
                 try {
-                    Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY)
+                    Intent intent = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
                             .build(MapsActivity.this);
                     startActivityForResult(intent, Utils.PLACE_AUTOCOMPLETE_START);
                 } catch (GooglePlayServicesRepairableException e) {
@@ -100,9 +109,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 break;
 
             }
-            case R.id.edt_end: {
+            case R.id.destarea: {
                 try {
-                    Intent i = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_OVERLAY)
+                    Intent i = new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
                             .build(MapsActivity.this);
                     startActivityForResult(i, Utils.PLACE_AUTOCOMPLETE_END);
                 } catch (GooglePlayServicesRepairableException e) {
@@ -112,6 +121,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 }
                 break;
 
+            }
+            case R.id.sourceLocSelectTxt:{
+                area2.setVisibility(View.GONE);
+                area_source.setVisibility(View.VISIBLE);
+                break;
+            }
+            case R.id.destLocSelectTxt:{
+                area_source.setVisibility(View.GONE);
+                area2.setVisibility(View.VISIBLE);
+                break;
             }
             default:
                 break;
@@ -125,7 +144,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (resultCode == RESULT_OK) {
                 Place place = PlaceAutocomplete.getPlace(this, data);
 
-                edtStart.setText(place.getName());
+                pickUpLocTxt.setText(place.getName());
+                sourceLocSelectTxt.setText(place.getName());
+
 
                 LatLng placeLocation = place.getLatLng();
                 startLocation = placeLocation;
@@ -149,7 +170,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (resultCode == RESULT_OK) {
                 Place place = PlaceAutocomplete.getPlace(this, data);
 
-                edtEnd.setText(place.getName());
+                destLocTxt.setText(place.getName());
+                destLocSelectTxt.setText(place.getName());
                 LatLng placeLocation = place.getLatLng();
                 endLocation = placeLocation;
                 this.endLocation = placeLocation;
@@ -213,39 +235,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // lay vi tri chinh giua man hinh
 
-        mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
-            @Override
-            public void onCameraMove() {
-                String addressStr = "";
-                Geocoder geoCoder;
-                List<Address> addresses;
-                geoCoder = new Geocoder(MapsActivity.this, Locale.getDefault());
-                LatLng center = mMap.getCameraPosition().target;
-                Log.d("Tag", center + "");
-                try {
-                    addresses = geoCoder.getFromLocation(center.latitude, center.longitude, 1);
-                    Log.d("Tag", addresses + "");
-                    if (addresses.size() != 0) {
-                        if (addresses.get(0).getFeatureName().equals("Unnamed Road")) {
-                            addressStr = addresses.get(0).getLocality() + ", " + addresses.get(0).getSubAdminArea() + "";
-                        } else {
-                            addressStr = addresses.get(0).getFeatureName() + " " + addresses.get(0).getThoroughfare() + "";
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                if (edtStart.isFocused()) {
-                    edtStart.setText(addressStr + "");
-                    startLocation = new LatLng(center.latitude, center.longitude);
-                } else {
-                    edtEnd.setText(addressStr + "");
-                    endLocation = new LatLng(center.latitude, center.longitude);
-                }
-
-            }
-        });
+//        mMap.setOnCameraMoveListener(new GoogleMap.OnCameraMoveListener() {
+//            @Override
+//            public void onCameraMove() {
+//                String addressStr = "";
+//                Geocoder geoCoder;
+//                List<Address> addresses;
+//                geoCoder = new Geocoder(MapsActivity.this, Locale.getDefault());
+//                LatLng center = mMap.getCameraPosition().target;
+//                Log.d("Tag", center + "");
+//                try {
+//                    addresses = geoCoder.getFromLocation(center.latitude, center.longitude, 1);
+//                    Log.d("Tag", addresses + "");
+//                    if (addresses.size() != 0) {
+//                        if (addresses.get(0).getFeatureName().equals("Unnamed Road")) {
+//                            addressStr = addresses.get(0).getLocality() + ", " + addresses.get(0).getSubAdminArea() + "";
+//                        } else {
+//                            addressStr = addresses.get(0).getFeatureName() + " " + addresses.get(0).getThoroughfare() + "";
+//                        }
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//
+////                if (edtStart.isFocused()) {
+////                    edtStart.setText(addressStr + "");
+////                    startLocation = new LatLng(center.latitude, center.longitude);
+////                } else {
+////                    edtEnd.setText(addressStr + "");
+////                    endLocation = new LatLng(center.latitude, center.longitude);
+////                }
+//
+//            }
+//        });
 
 
         //check
@@ -299,35 +321,36 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onLocationChanged(Location location) {
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
-        mMap.animateCamera(cameraUpdate);
-        locationManager.removeUpdates(this);
+//        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+//        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
+//        mMap.animateCamera(cameraUpdate);
+//        locationManager.removeUpdates(this);
+//
+//        double lat = location.getLatitude();
+//        double lng = location.getLongitude();
+//        Geocoder geoCoder = new Geocoder(this, Locale.getDefault()); //it is Geocoder
+//        StringBuilder builder = new StringBuilder();
+//        try {
+//            List<Address> address = geoCoder.getFromLocation(lat, lng, 1);
+//            int maxLines = address.get(0).getMaxAddressLineIndex();
+//
+//            String addressStr = "";
+//            if (address.get(0).getFeatureName().equals("Unnamed Road")) {
+//                addressStr = address.get(0).getLocality() + ", " + address.get(0).getSubAdminArea() + "";
+//            } else {
+//                addressStr = address.get(0).getFeatureName() + " " + address.get(0).getThoroughfare() + "";
+//            }
+//            builder.append(addressStr);
+//            builder.append("");
+//
+//
+//            String nowAddress = builder.toString(); //This is the complete address.
+//            sourceLocSelectTxt.setText(nowAddress + "");
+//            startLocation = new LatLng(lat, lng);
+//        } catch (IOException e) {
+//        } catch (NullPointerException e) {
+//        }
 
-        double lat = location.getLatitude();
-        double lng = location.getLongitude();
-        Geocoder geoCoder = new Geocoder(this, Locale.getDefault()); //it is Geocoder
-        StringBuilder builder = new StringBuilder();
-        try {
-            List<Address> address = geoCoder.getFromLocation(lat, lng, 1);
-            int maxLines = address.get(0).getMaxAddressLineIndex();
-
-            String addressStr = "";
-            if (address.get(0).getFeatureName().equals("Unnamed Road")) {
-                addressStr = address.get(0).getLocality() + ", " + address.get(0).getSubAdminArea() + "";
-            } else {
-                addressStr = address.get(0).getFeatureName() + " " + address.get(0).getThoroughfare() + "";
-            }
-            builder.append(addressStr);
-            builder.append("");
-
-
-            String nowAddress = builder.toString(); //This is the complete address.
-            edtStart.setText(nowAddress + "");
-            startLocation = new LatLng(lat, lng);
-        } catch (IOException e) {
-        } catch (NullPointerException e) {
-        }
 
 //        Log.i("ABC", "onLocationChanged: "+location.getSpeed()* 3.6);
 //        TrafficModel model = new TrafficModel("12eassd",(float) location.getLatitude(),(float)location.getLongitude(),location.getSpeed()*3.6f,"Test");

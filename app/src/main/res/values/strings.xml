@@ -1,4 +1,12 @@
 <resources>
     <string name="app_name">TrafficJam</string>
     <string name="title_activity_maps">Map</string>
+
+
+    <string name="defaultFont">fonts/helveticaneue.ttf</string>
+    <string name="robotomediumFont">fonts/roboto_medium.ttf</string>
+
+    <string name="robotolightFont">fonts/helveticaneue.ttf</string>
+    <string name="robotobold">fonts/roboto_bold.ttf</string>
+
 </resources>
