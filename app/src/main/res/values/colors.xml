@@ -61,4 +61,7 @@
     <color name="mdtp_white">#FFFFFF</color>
     <color name="mdtp_transparent_black">#7f000000</color>
     <color name="mdtp_done_text_color_disabled">#cccccc</color>
+    <color name="green">#64dd17</color>
+    <color name="red">#d50000</color>
+    <color name="yellow">#ffc400</color>
 </resources>

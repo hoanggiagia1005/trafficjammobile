@@ -14,11 +14,16 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v7.widget.CardView;
+import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -48,6 +53,8 @@ import com.google.gson.JsonObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -62,6 +69,9 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
 import trafficjam.k60n.com.trafficjam.R;
 import trafficjam.k60n.com.trafficjam.network.NetworkModule;
+import trafficjam.k60n.com.trafficjam.network.model.Leg;
+import trafficjam.k60n.com.trafficjam.network.model.Respone;
+import trafficjam.k60n.com.trafficjam.network.model.TrafficModel;
 import trafficjam.k60n.com.trafficjam.util.Utils;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
@@ -91,19 +101,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @BindView(R.id.destLocTxt)
     TextView destLocTxt;
     @BindView(R.id.area_source)
-            RelativeLayout area_source;
+    RelativeLayout area_source;
     @BindView(R.id.area2)
-            RelativeLayout area2;
+    RelativeLayout area2;
 
 
     LatLng startLocation, endLocation;
     Marker startMarker, endMarker;
     ArrayList<Polyline> listPolyLine;
     private LocationManager locationManager;
+    Location userLocation;
+    boolean firstStart = true;
+    private Location mLastLocation;
+    String deviceId;
+    List<Leg> arrayList = new ArrayList<>();
 
 
-
-    @OnClick({R.id.destarea, R.id.sourceLocSelectTxt,R.id.sourceLocCardArea,R.id.destLocSelectTxt})
+    @OnClick({R.id.destarea, R.id.sourceLocSelectTxt, R.id.sourceLocCardArea, R.id.destLocSelectTxt})
     void click(View view) {
         switch (view.getId()) {
             case R.id.sourceLocCardArea: {
@@ -132,12 +146,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 break;
 
             }
-            case R.id.sourceLocSelectTxt:{
+            case R.id.sourceLocSelectTxt: {
                 area2.setVisibility(View.GONE);
                 area_source.setVisibility(View.VISIBLE);
                 break;
             }
-            case R.id.destLocSelectTxt:{
+            case R.id.destLocSelectTxt: {
                 area_source.setVisibility(View.GONE);
                 area2.setVisibility(View.VISIBLE);
                 break;
@@ -191,7 +205,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     endMarker = mMap.addMarker(new MarkerOptions().position(placeLocation).title("" + place.getAddress()));
                 }
 
-                if (!pickUpLocTxt.getText().toString().isEmpty()){
+                if (!pickUpLocTxt.getText().toString().isEmpty()) {
                     getDirections();
                 }
 
@@ -217,12 +231,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-        listPolyLine = new ArrayList<>();
-    }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
@@ -233,8 +242,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1, 0, this);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                2000,
+                10, this);
+        listPolyLine = new ArrayList<>();
+        TelephonyManager telephonyManager = (TelephonyManager)getSystemService(Context.TELEPHONY_SERVICE);
+        deviceId = telephonyManager.getDeviceId();
     }
+
 
     @Override
     protected void onPause() {
@@ -269,42 +284,60 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             layoutParams.setMargins(0, 0, 30, 30);
         }
 
+        mMap.setOnPolylineClickListener(new GoogleMap.OnPolylineClickListener() {
+            @Override
+            public void onPolylineClick(Polyline polyline) {
+                Utils.showMessenger((String) polyline.getTag(),MapsActivity.this);
+            }
+        });
+
+        mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+            @Override
+            public boolean onMyLocationButtonClick() {
+                String nowAddress = getNowLocation(userLocation.getLatitude(),userLocation.getLongitude());
+                sourceLocSelectTxt.setText(nowAddress);
+                return false;
+            }
+        });
+
+
+
 
     }
 
+
     private void getDirections() {
-        String startLoc = startLocation.latitude + "," + startLocation.longitude;
-        String endLoc = endLocation.latitude + "," + endLocation.longitude;
-        NetworkModule.getServiceMapAPI().getDirections(startLoc, endLoc)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Subscriber<JsonObject>() {
-                    @Override
-                    public void onCompleted() {
-
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-
-                    }
-
-                    @Override
-                    public void onNext(JsonObject jsonObject) {
-                        Log.i(TAG, "onNext: "+jsonObject);
-                    }
-                });
         String serverKey = "AIzaSyDt2fvDhvVmvluksCk1qNLS0oP2czcrtfk";
+
         GoogleDirection.withServerKey(serverKey)
                 .from(startLocation)
                 .to(endLocation)
                 .alternativeRoute(true)
                 .execute(new DirectionCallback() {
                     @Override
-                    public void onDirectionSuccess(Direction direction, String rawBody) {
+                    public void onDirectionSuccess(final Direction direction, final String rawBody) {
                         Log.i(TAG, "onDirectionSuccess: "+direction.toString());
                         // Do something here
-                        DrawRoute(direction,rawBody,startLocation,endLocation);
+
+                        NetworkModule.getService().getResult(direction).subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new Subscriber<Respone>() {
+                                    @Override
+                                    public void onCompleted() {
+
+                                    }
+
+                                    @Override
+                                    public void onError(Throwable e) {
+                                        Log.i(TAG, "onError: "+e.toString());
+                                    }
+
+                                    @Override
+                                        public void onNext(Respone jsonObject) {
+                                        arrayList = jsonObject.getData().getRoutes().get(0).getLegs();
+                                        DrawRoute(direction,rawBody,startLocation,endLocation);
+                                    }
+                                });
                     }
 
                     @Override
@@ -316,15 +349,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     private void DrawRoute(Direction direction, String message,LatLng sourceLatlng,LatLng DestinationLng) {
-        Polyline poly;
-        for (Route route : direction.getRouteList()) {
+        Polyline poly = null;
+        for (int i = 0;i< direction.getRouteList().size();i++) {
+            Route route = direction.getRouteList().get(i);
             PolylineOptions polyoptions = new PolylineOptions();
-            polyoptions.color(getResources().getColor(R.color.appThemeColor_1));
-            polyoptions.width(5);
+
+            if (indexInArray(arrayList.get(i),Double.parseDouble(direction.getRouteList().get(i).getLegList().get(0).getDistance().getValue()))==0){
+                polyoptions.color(getResources().getColor(R.color.green));
+
+            }else if (indexInArray(arrayList.get(i),Double.parseDouble(direction.getRouteList().get(i).getLegList().get(0).getDistance().getValue()))==1){
+                polyoptions.color(getResources().getColor(R.color.yellow));
+            }else {
+                polyoptions.color(getResources().getColor(R.color.red));
+            }
+            polyoptions.width(8);
             polyoptions.addAll(route.getOverviewPolyline().getPointList());
             poly = mMap.addPolyline(polyoptions);
             poly.setClickable(true);
-
+            poly.setTag("Quãng đường "+direction.getRouteList().get(i).getLegList().get(0).getDistance().getText()
+                    +"\nVận tốc tốc trung bình "+arrayList.get(i).getAvgSpeed()
+                    +"\nSố người "+arrayList.get(i).getSumDevice()
+//                    +"\nThời gian "+direction.getRouteList().get(i).getLegList().get(0).getDuration().getText()
+             );
         }
         LatLngBounds.Builder latLngBuilder = new LatLngBounds.Builder();
         if(sourceLatlng!=null)
@@ -340,63 +386,72 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
+    private int indexInArray(Leg leg,Double d){
+        ArrayList<Leg> temp= new ArrayList<>();
+        temp.addAll(arrayList);
+        Collections.sort(temp, new Comparator<Leg>() {
+            @Override
+            public int compare(Leg leg, Leg t1) {
+                return (leg.getDistance().getValue()/leg.getAvgSpeed())<(t1.getDistance().getValue()/t1.getAvgSpeed())?-1:((leg.getDistance().getValue()/leg.getAvgSpeed())>(t1.getDistance().getValue()/t1.getAvgSpeed())?1:0);
+            }
+        });
+        for (int i = 0;i<temp.size();i++){
+            if (leg.equals(temp.get(i))){
+                return i;
+            }
+        }
+        return -1;
     }
 
     @Override
     public void onLocationChanged(Location location) {
-//        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-//        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 15);
-//        mMap.animateCamera(cameraUpdate);
-//        locationManager.removeUpdates(this);
-//
-//        double lat = location.getLatitude();
-//        double lng = location.getLongitude();
-//        Geocoder geoCoder = new Geocoder(this, Locale.getDefault()); //it is Geocoder
-//        StringBuilder builder = new StringBuilder();
-//        try {
-//            List<Address> address = geoCoder.getFromLocation(lat, lng, 1);
-//            int maxLines = address.get(0).getMaxAddressLineIndex();
-//
-//            String addressStr = "";
-//            if (address.get(0).getFeatureName().equals("Unnamed Road")) {
-//                addressStr = address.get(0).getLocality() + ", " + address.get(0).getSubAdminArea() + "";
-//            } else {
-//                addressStr = address.get(0).getFeatureName() + " " + address.get(0).getThoroughfare() + "";
-//            }
-//            builder.append(addressStr);
-//            builder.append("");
-//
-//
-//            String nowAddress = builder.toString(); //This is the complete address.
-//            sourceLocSelectTxt.setText(nowAddress + "");
-//            startLocation = new LatLng(lat, lng);
-//        } catch (IOException e) {
-//        } catch (NullPointerException e) {
-//        }
+        this.userLocation = location;
+        if (firstStart){
+            firstStart = false;
+            getNowLocation(userLocation.getLatitude(),userLocation.getLongitude());
+        }
+
+        //calcul manually speed
+        double speed = 0;
+        if (this.mLastLocation != null)
+            speed = Math.sqrt(
+                    Math.pow(location.getLongitude() - mLastLocation.getLongitude(), 2)
+                            + Math.pow(location.getLatitude() - mLastLocation.getLatitude(), 2)
+            ) / (location.getTime() - this.mLastLocation.getTime());
+        //if there is speed from location
+        if (location.hasSpeed())
+            //get location speed
+            speed = location.getSpeed();
+        this.mLastLocation = location;
+        ////////////
+        //DO WHAT YOU WANT WITH speed VARIABLE
+        ////////////
+
+        Log.i(TAG, "onLocationChanged: "+speed*3.6);
 
 
-//        Log.i("ABC", "onLocationChanged: "+location.getSpeed()* 3.6);
-//        TrafficModel model = new TrafficModel("12eassd",(float) location.getLatitude(),(float)location.getLongitude(),location.getSpeed()*3.6f,"Test");
-//        NetworkModule.getService().pushLocation(model)
-//                .subscribeOn(Schedulers.io())
-//                .observeOn(AndroidSchedulers.mainThread())
-//                .subscribe(new Subscriber<JsonObject>() {
-//                    @Override
-//                    public void onCompleted() {
-//
-//                    }
-//
-//                    @Override
-//                    public void onError(Throwable e) {
-//
-//                    }
-//
-//                    @Override
-//                    public void onNext(JsonObject jsonObject) {
-//
-//                    }
-//                });
+        TrafficModel model = new TrafficModel(deviceId,location.getLatitude(),location.getLongitude(),getAddress(location.getLatitude(),location.getLongitude()),speed*3.6);
+        NetworkModule.getService().pushLocation(model)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Subscriber<JsonObject>() {
+                    @Override
+                    public void onCompleted() {
+
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+
+                    }
+
+                    @Override
+                    public void onNext(JsonObject jsonObject) {
+
+                    }
+                });
     }
 
     @Override
@@ -412,6 +467,48 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onProviderDisabled(String s) {
 
+    }
+
+    public String getNowLocation(double lat, double lng) {
+        String nowAddress = null;
+        Geocoder geoCoder = new Geocoder(this, Locale.getDefault()); //it is Geocoder
+        StringBuilder builder = new StringBuilder();
+        try {
+            List<Address> address = geoCoder.getFromLocation(lat, lng, 1);
+            int maxLines = address.get(0).getMaxAddressLineIndex();
+
+            String addressStr = "";
+            if (address.get(0).getFeatureName().equals("Unnamed Road")) {
+                addressStr = address.get(0).getLocality() + ", " + address.get(0).getSubAdminArea() + "";
+            } else {
+                addressStr = address.get(0).getFeatureName() + " " + address.get(0).getThoroughfare() + "";
+            }
+            builder.append(addressStr);
+            builder.append("");
+
+
+            nowAddress = builder.toString(); //This is the complete address.
+
+            startLocation = new LatLng(lat, lng);
+        } catch (IOException e) {
+        } catch (NullPointerException e) {
+        }
+        return nowAddress;
+    }
+
+    public String getAddress(double lat, double lng) {
+        String nowAddress = null;
+        Geocoder geoCoder = new Geocoder(this, Locale.getDefault()); //it is Geocoder
+        try {
+            List<Address> address = geoCoder.getFromLocation(lat, lng, 1);
+            int maxLines = address.get(0).getMaxAddressLineIndex();
+
+            nowAddress = address.get(0).getThoroughfare() + "";
+
+        } catch (IOException e) {
+        } catch (NullPointerException e) {
+        }
+        return nowAddress;
     }
 
 }
